@@ -3,15 +3,15 @@ require("keymaps")
 require("config.lazy")
 require("repl")
 
-
 -- Basic Settings
 vim.cmd("syntax on")
 vim.opt.number = true
+vim.opt.undofile = true
+vim.opt.undodir = vim.fn.stdpath("data") .. "/undo"
 vim.lsp.enable("pyright")
 
 
 -- Custom Functions
-require("llm").setup_keymaps()
-vim.cmd.colorscheme("catppuccin")
+vim.cmd.colorscheme("catppuccin-frappe")
 
 

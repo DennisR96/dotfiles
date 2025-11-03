@@ -17,6 +17,7 @@ config = {
 	color_scheme = "Catppuccin Frappe",
 	max_fps = 120,
 
+
 	-- Tab Bar
 	enable_tab_bar = true,
 	use_fancy_tab_bar = false,
