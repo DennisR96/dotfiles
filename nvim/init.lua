@@ -10,8 +10,5 @@ vim.opt.undofile = true
 vim.opt.undodir = vim.fn.stdpath("data") .. "/undo"
 vim.lsp.enable("pyright")
 
-
 -- Custom Functions
 vim.cmd.colorscheme("catppuccin-frappe")
-
-
