@@ -1,3 +1,6 @@
+-- Clipboard
+vim.opt.clipboard = "unnamedplus"
+
 -- Requirements
 require("keymaps")
 require("config.lazy")
