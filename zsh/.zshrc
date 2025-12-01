@@ -31,3 +31,6 @@ export FZF_CTRL_T_OPTS="
   --bind 'ctrl-/:change-preview-window(down|hidden|)'"
 eval "$(zoxide init zsh)"
 
+
+# Added by Antigravity
+export PATH="/Users/dennisrak/.antigravity/antigravity/bin:$PATH"

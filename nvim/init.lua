@@ -4,7 +4,6 @@ vim.opt.clipboard = "unnamedplus"
 -- Requirements
 require("keymaps")
 require("config.lazy")
-require("repl")
 
 -- Basic Settings
 vim.cmd("syntax on")
