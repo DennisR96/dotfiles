@@ -1,10 +1,20 @@
 {
     "geminicodeassist.project": "delta-art-hhpb8",
-    "workbench.colorTheme": "Catppuccin Macchiato",
+    "workbench.editor.enablePreview": false, 
+    "explorer.openEditors.visible": 0,
+    "workbench.editor.limit.enabled": true,
+    "workbench.editor.limit.perEditorGroup": true,
+    "workbench.editor.limit.value": 1,
+    "workbench.colorTheme": "Catppuccin Mocha",
+    "editor.fontSize": 16,
     "github.copilot.enable": {
         "*": true,
         "plaintext": false,
         "markdown": true,
         "scminput": false
-    }
+    },
+    "editor.minimap.enabled": false,
+    "extensions.experimental.affinity": {
+        "asvetliakov.vscode-neovim": 1
+    },
 }
