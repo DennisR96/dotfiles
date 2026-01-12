@@ -34,3 +34,25 @@ eval "$(zoxide init zsh)"
 
 # Added by Antigravity
 export PATH="/Users/dennisrak/.antigravity/antigravity/bin:$PATH"
+
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/Users/dennisrak/.cache/lm-studio/bin"
+# End of LM Studio CLI section
+
+# Clipboard Copy Function
+function clipcopy() {
+    local target_dir="${1:-.}"
+    local file_pattern="$2"
+    local find_args=( "$target_dir" )
+
+    if [[ -n "$file_pattern" ]]; then
+        find_args+=( -name "$file_pattern" )
+    else
+        find_args+=( -type f )
+    fi
+
+    find "${find_args[@]}" -exec tail -n +1 {} + | pbcopy
+    
+    echo "Copied contents of files in '${target_dir}' ${file_pattern:+matching '${file_pattern}' }to clipboard."
+}
+

@@ -11,3 +11,5 @@ vim.keymap.set("n", "<leader>w", ":<C-u>w<CR>", { noremap = true, silent = true 
 vim.keymap.set("n", "-", "<CMD>Oil<CR>", { desc = "Open parent directory with Oil" })
 vim.g.copilot_no_tab_map = true
 vim.api.nvim_set_keymap("i", "<C-J>", 'copilot#Accept("<CR>")', { silent = true, expr = true })
+
+vim.keymap.set("x", "p", "P")
