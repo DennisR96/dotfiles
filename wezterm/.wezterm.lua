@@ -2,11 +2,10 @@ local wezterm = require("wezterm")
 local config = wezterm.config_builder()
 
 config.font_size = 16
-config.initial_cols = 140
-config.initial_rows = 40
+-- config.initial_cols = 140
+-- config.initial_rows = 40
 config.send_composed_key_when_left_alt_is_pressed = true
--- config.window_decorations = "TITLE | RESIZE"
-config.window_decorations = "RESIZE"
+config.window_decorations = "TITLE | RESIZE"
 config.window_padding = {
 	left = 50,
 	right = 50,
