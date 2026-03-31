@@ -40,6 +40,14 @@ vim.keymap.set("n", "fk", "zk", { desc = "Jump to previous fold" })
 vim.keymap.set("n", "fR", "zR", { desc = "Open all folds in file" })
 vim.keymap.set("n", "fM", "zM", { desc = "Close all folds in file" })
 
+-- Disable Single Line Jumps
+vim.keymap.set("n", "j", "gj", opts)
+vim.keymap.set("n", "k", "gk", opts)
+
+-- Also remap for visual mode
+vim.keymap.set("v", "j", "gj", opts)
+vim.keymap.set("v", "k", "gk", opts)
+
 -- Lazy.nvim Setup
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
