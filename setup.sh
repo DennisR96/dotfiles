@@ -27,6 +27,26 @@ install_zsh_vi_mode_manual() {
   fi
 }
 
+install_eza_linux() {
+  if apt-cache show eza >/dev/null 2>&1; then
+    install_apt eza
+    return
+  fi
+
+  echo "eza not found in the default apt repositories; adding the official eza repository"
+  install_apt ca-certificates gnupg wget
+
+  sudo mkdir -p /etc/apt/keyrings
+  wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc \
+    | sudo gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
+  echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" \
+    | sudo tee /etc/apt/sources.list.d/gierens.list >/dev/null
+  sudo chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
+
+  sudo apt-get update
+  install_apt eza
+}
+
 link_file() {
   local source="$1"
   local target="$2"
@@ -51,7 +71,8 @@ if [[ "$(uname)" == "Darwin" ]]; then
 else
   echo "Running on Linux"
   sudo apt-get update
-  install_apt zsh fzf eza neovim ripgrep git
+  install_apt zsh fzf neovim ripgrep git
+  install_eza_linux
   install_zsh_vi_mode_manual
 
   if [[ "$(basename "$SHELL")" != "zsh" ]]; then
