@@ -1,6 +1,6 @@
 # -- Alias --
-
 alias reload='source ~/.zshrc'
+alias cap="PYTHONPATH=/Users/dennisrak/Developer python3 -m cap"
 
 # Navigation
 alias ..="cd .."
@@ -25,6 +25,8 @@ alias cf="tail -n +1 * | pbcopy && echo 'Copied Folder to clipboard!'"
 
 # -- Paths -- 
 export PATH="$PATH:/Applications/WezTerm.app/Contents/MacOS"
+export PATH="$HOME/dotfiles/bin:$PATH"
+
 
 # -- Python --
 export KEYTIMEOUT=1
@@ -34,7 +36,8 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 # Paths
 
 # Alias
-alias ls='eza --icons=always --hyperlink -a'
+alias ls='eza --icons=always'
+alias tree='eza --tree | pbcopy' 
 alias nvf='fzf --preview "bat --style=numbers --color=always {} || cat {}" --preview-window=right:60% --bind "enter:become(nvim {})"'
 alias nvg='rg --no-heading --line-number --color=always "" | fzf --ansi --delimiter : --preview "bat --style=numbers --color=always {1} --highlight-line {2}" --bind "enter:become(nvim {1} +{2})"'
 alias src='source .venv/bin/activate'
@@ -49,7 +52,11 @@ bindkey -v
 # Starship
 eval "$(starship init zsh)"
 source <(fzf --zsh)
-source $(brew --prefix)/opt/zsh-vi-mode/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh
+if command -v brew >/dev/null 2>&1 && [[ -f "$(brew --prefix)/opt/zsh-vi-mode/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh" ]]; then
+  source "$(brew --prefix)/opt/zsh-vi-mode/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh"
+elif [[ -f "$HOME/.zsh/zsh-vi-mode/zsh-vi-mode.plugin.zsh" ]]; then
+  source "$HOME/.zsh/zsh-vi-mode/zsh-vi-mode.plugin.zsh"
+fi
 export FZF_CTRL_T_OPTS="
   --walker-skip .git,node_modules,target
   --preview 'bat -n --color=always {}'
@@ -57,4 +64,14 @@ export FZF_CTRL_T_OPTS="
 eval "$(zoxide init zsh)"
 
 
+# Created by `pipx` on 2026-05-08 09:07:54
+export PATH="$PATH:/Users/dennisrak/.local/bin"
 
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/Users/dennisrak/.cache/lm-studio/bin"
+# End of LM Studio CLI section
+
+[[ -f /Users/dennisrak/.npm/_npx/6913fdfd1ea7a741/node_modules/tabtab/.completions/electron-forge.zsh ]] && . /Users/dennisrak/.npm/_npx/6913fdfd1ea7a741/node_modules/tabtab/.completions/electron-forge.zsh
+
+# Pi
+export PATH="/opt/homebrew/Cellar/node/26.0.0/bin:$PATH"

@@ -184,7 +184,72 @@ local plugins = {
 		config = function()
 			require("oil").setup({
 				delete_to_trash = true,
+				columns = { "icon" },
 				view_options = { show_hidden = true },
+			})
+
+			local size_ns = vim.api.nvim_create_namespace("oil_file_sizes")
+
+			local function format_size(size)
+				if size < 0 then
+					return nil
+				elseif size >= 1e9 then
+					return string.format("%.1fG", size / 1e9)
+				elseif size >= 1e6 then
+					return string.format("%.1fM", size / 1e6)
+				elseif size >= 1e3 then
+					return string.format("%.1fK", size / 1e3)
+				else
+					return tostring(size)
+				end
+			end
+
+			local function show_file_sizes(bufnr)
+				if not vim.api.nvim_buf_is_valid(bufnr) or vim.bo[bufnr].filetype ~= "oil" then
+					return
+				end
+
+				local oil = require("oil")
+				local dir = oil.get_current_dir(bufnr)
+				if not dir then
+					return
+				end
+
+				vim.api.nvim_buf_clear_namespace(bufnr, size_ns, 0, -1)
+
+				for lnum = 1, vim.api.nvim_buf_line_count(bufnr) do
+					local entry = oil.get_entry_on_line(bufnr, lnum)
+					if entry and entry.type == "file" then
+						local size = format_size(vim.fn.getfsize(dir .. entry.name))
+						if size then
+							vim.api.nvim_buf_set_extmark(bufnr, size_ns, lnum - 1, 0, {
+								virt_text = { { "  " .. size, "Comment" } },
+								virt_text_pos = "eol",
+							})
+						end
+					end
+				end
+			end
+
+			local function schedule_file_sizes(bufnr)
+				vim.schedule(function()
+					show_file_sizes(bufnr)
+				end)
+			end
+
+			vim.api.nvim_create_autocmd("User", {
+				pattern = "OilEnter",
+				callback = function(args)
+					schedule_file_sizes(args.data and args.data.buf or 0)
+				end,
+			})
+
+			vim.api.nvim_create_autocmd({ "BufEnter", "TextChanged" }, {
+				callback = function(args)
+					if vim.bo[args.buf].filetype == "oil" then
+						schedule_file_sizes(args.buf)
+					end
+				end,
 			})
 		end,
 	},
@@ -205,6 +270,8 @@ local plugins = {
 			vim.keymap.set("n", "<leader>fg", builtin.live_grep, { desc = "Telescope live grep" })
 			vim.keymap.set("n", "<leader>fb", builtin.buffers, { desc = "Telescope buffers" })
 			vim.keymap.set("n", "<leader>fh", builtin.help_tags, { desc = "Telescope help tags" })
+			vim.keymap.set("n", "<leader>fz", builtin.current_buffer_fuzzy_find, { desc = "Telescope current buffer" })
+			vim.keymap.set("n", "<leader>fs", builtin.lsp_document_symbols, { desc = "Telescope document symbols" })
 		end,
 	},
 

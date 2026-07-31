@@ -1,22 +1,66 @@
-# Hello World
+#!/usr/bin/env bash
+set -euo pipefail
 
-if [[ $(uname) == "Darwin" ]]; then
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKUP_SUFFIX="backup.$(date +%Y%m%d%H%M%S)"
+
+install_brew() {
+  brew install "$@"
+}
+
+install_brew_cask() {
+  brew install --cask "$@"
+}
+
+install_apt() {
+  sudo apt-get install -y "$@"
+}
+
+install_zsh_vi_mode_manual() {
+  local target="$HOME/.zsh/zsh-vi-mode"
+
+  if [[ -d "$target/.git" ]]; then
+    git -C "$target" pull --ff-only
+  else
+    mkdir -p "$(dirname "$target")"
+    git clone https://github.com/jeffreytse/zsh-vi-mode.git "$target"
+  fi
+}
+
+link_file() {
+  local source="$1"
+  local target="$2"
+
+  mkdir -p "$(dirname "$target")"
+
+  if [[ -L "$target" ]]; then
+    rm "$target"
+  elif [[ -e "$target" ]]; then
+    mv "$target" "$target.$BACKUP_SUFFIX"
+    echo "Backed up $target to $target.$BACKUP_SUFFIX"
+  fi
+
+  ln -s "$source" "$target"
+  echo "Linked $target -> $source"
+}
+
+if [[ "$(uname)" == "Darwin" ]]; then
   echo "Running on macOS"
-  brew install fzf
-  brew install --cask raycast
-else 
+  install_brew fzf eza neovim zsh ripgrep zsh-vi-mode
+  install_brew_cask raycast wezterm
+else
   echo "Running on Linux"
-  # Install zsh and set it as the default shell
-  apt install zsh
-  chsh -s $(which zsh)
+  sudo apt-get update
+  install_apt zsh fzf eza neovim ripgrep git
+  install_zsh_vi_mode_manual
 
-  apt install fzf
-  apt install eza
-
-  apt install neovim
-  
+  if [[ "$(basename "$SHELL")" != "zsh" ]]; then
+    chsh -s "$(command -v zsh)"
+  fi
 fi
 
+link_file "$DOTFILES_DIR/zsh/.zshrc" "$HOME/.zshrc"
+link_file "$DOTFILES_DIR/nvim" "$HOME/.config/nvim"
+link_file "$DOTFILES_DIR/wezterm/.wezterm.lua" "$HOME/.wezterm.lua"
 
-
-
+echo "Setup complete."
