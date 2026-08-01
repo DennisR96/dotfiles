@@ -1,4 +1,9 @@
 -- Basic Configuration
+if vim.fn.has("nvim-0.9") ~= 1 then
+	vim.api.nvim_err_writeln("This config requires Neovim >= 0.9. On Ubuntu/Debian, apt often installs an old Neovim; install a newer release and run `nvim --version`.")
+	return
+end
+
 vim.opt.clipboard = "unnamedplus"
 vim.opt.number = true
 vim.opt.undofile = true

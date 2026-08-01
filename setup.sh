@@ -27,6 +27,28 @@ install_zsh_vi_mode_manual() {
   fi
 }
 
+install_neovim_linux() {
+  local arch asset tmpdir
+
+  case "$(uname -m)" in
+    x86_64|amd64) asset="nvim-linux-x86_64.tar.gz" ;;
+    aarch64|arm64) asset="nvim-linux-arm64.tar.gz" ;;
+    *)
+      echo "Unsupported architecture for Neovim binary: $(uname -m)" >&2
+      echo "Install Neovim >= 0.9 manually from https://github.com/neovim/neovim/releases" >&2
+      return 1
+      ;;
+  esac
+
+  tmpdir="$(mktemp -d)"
+  curl -L "https://github.com/neovim/neovim/releases/latest/download/$asset" -o "$tmpdir/$asset"
+  tar -xzf "$tmpdir/$asset" -C "$tmpdir"
+  sudo rm -rf /opt/nvim
+  sudo mv "$tmpdir"/nvim-linux-* /opt/nvim
+  sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
+  rm -rf "$tmpdir"
+}
+
 install_eza_linux() {
   if apt-cache show eza >/dev/null 2>&1; then
     install_apt eza
@@ -71,7 +93,8 @@ if [[ "$(uname)" == "Darwin" ]]; then
 else
   echo "Running on Linux"
   sudo apt-get update
-  install_apt zsh fzf neovim ripgrep git
+  install_apt zsh fzf ripgrep git curl ca-certificates
+  install_neovim_linux
   install_eza_linux
   install_zsh_vi_mode_manual
 
