@@ -4,7 +4,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { realpathSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { isInteractiveShellCommand } from "./interactive-shell.ts";
+import { isInteractiveShellCommand } from "../interactive-shell/index.ts";
 
 const ENTRY_TYPE = "cwd-change";
 const REQUIRED_PATH_TOOLS = new Set(["read", "write", "edit"]);
@@ -18,7 +18,6 @@ let customFooterInstalled = false;
 let previousCwd: string | undefined;
 const execFileAsync = promisify(execFile);
 
-// Capture standalone directory commands; leave compound shell commands alone.
 function directoryCommand(command: string): { name: "cd" | "z"; args: string[] } | null {
   const match = command.trim().match(/^(cd|z)(?:\s+(.*))?$/s);
   if (!match) return null;
@@ -93,7 +92,6 @@ function updateFooter(ctx: ExtensionContext): void {
   }
   customFooterInstalled = true;
 
-  // The built-in footer reads the session's original cwd, not process.cwd().
   ctx.ui.setFooter((tui, theme, footerData) => {
     const unsubscribe = footerData.onBranchChange(() => tui.requestRender());
     let cached: { sessionId: string; leafId: string | null; count: number; parts: string[] } | undefined;
@@ -187,9 +185,9 @@ function restoreFromBranch(ctx: ExtensionContext): string | undefined {
       if (typeof cwd !== "string") continue;
       try {
         if (statSync(cwd).isDirectory()) return realpathSync(cwd);
-      } catch { /* Ignore paths that no longer exist. */ }
+      } catch { }
     }
-  } catch { /* A missing/unavailable branch falls back to the initial directory. */ }
+  } catch { }
   return undefined;
 }
 
@@ -224,7 +222,7 @@ function getCompletions(prefix: string): AutocompleteItem[] | null {
   } catch { return null; }
 }
 
-export default function (pi: ExtensionAPI): void {
+export default function(pi: ExtensionAPI): void {
   pi.registerCommand("cd", {
     description: "Show or change the effective working directory (/cd <path>)",
     handler: async (args, ctx) => {
@@ -307,11 +305,9 @@ export default function (pi: ExtensionAPI): void {
     if (restoredCwd) {
       effectiveCwd = restoredCwd;
     } else if (event.reason === "new") {
-      // /new retains the selected directory, but starts with an empty branch.
       try {
         effectiveCwd = statSync(inheritedCwd).isDirectory() ? realpathSync(inheritedCwd) : originalCwd;
       } catch { effectiveCwd = originalCwd; }
-      // Record the inherited directory so tree navigation and resuming this session retain it.
       if (effectiveCwd !== originalCwd) pi.appendEntry(ENTRY_TYPE, { cwd: effectiveCwd });
     } else {
       effectiveCwd = originalCwd;

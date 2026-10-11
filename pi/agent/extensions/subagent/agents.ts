@@ -1,7 +1,3 @@
-/**
- * Agent discovery and configuration
- */
-
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { CONFIG_DIR_NAME, getAgentDir, parseFrontmatter } from "@earendil-works/pi-coding-agent";
@@ -13,7 +9,6 @@ export interface AgentConfig {
   description: string;
   tools?: string[];
   model?: string;
-  /** Maximum number of nested subagent generations this agent may spawn. */
   maxDepth: number;
   systemPrompt: string;
   source: "user" | "project";
@@ -25,14 +20,6 @@ export interface AgentDiscoveryResult {
   projectAgentsDir: string | null;
 }
 
-/**
- * Raw agent frontmatter. Values are `unknown` because `parseFrontmatter` runs a
- * real YAML parser, so any scalar or collection can appear here.
- *
- * A type alias rather than an interface: `parseFrontmatter` constrains its
- * parameter to `Record<string, unknown>`, and only an alias picks up the
- * implicit index signature that satisfies it.
- */
 type AgentFrontmatter = {
   name?: unknown;
   description?: unknown;
@@ -41,18 +28,6 @@ type AgentFrontmatter = {
   maxDepth?: unknown;
 };
 
-/**
- * Normalize a frontmatter `tools` value to a list of tool names.
- *
- * Both spellings are valid YAML and both are in use:
- *
- *     tools: read, bash        # string
- *     tools: [read, bash]      # array
- *
- * so accept either. Anything else (a number, a map, a nested list) yields no
- * tools rather than throwing: this runs inside agent discovery, where a single
- * bad file must not take down every other agent in the same directory.
- */
 function parseToolList(value: unknown): string[] | undefined {
   const raw = Array.isArray(value) ? value : typeof value === "string" ? value.split(",") : [];
   const tools = raw
