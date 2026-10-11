@@ -105,6 +105,7 @@ fi
 
 link_file "$DOTFILES_DIR/zsh/.zshrc" "$HOME/.zshrc"
 link_file "$DOTFILES_DIR/nvim" "$HOME/.config/nvim"
+link_file "$DOTFILES_DIR/pi" "$HOME/.pi"
 link_file "$DOTFILES_DIR/wezterm/.wezterm.lua" "$HOME/.wezterm.lua"
 
 echo "Setup complete."
