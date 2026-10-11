@@ -1,0 +1,22 @@
+{
+  "lastChangelogVersion": "1.1.0",
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-6-luna",
+  "defaultTools": [
+    "+codemode"
+  ],
+  "theme": "catppuccin-mocha",
+  "externalEditor": "nvim",
+  "defaultThinkingLevel": "medium",
+  "shellPath": "/bin/zsh",
+  "packages": [
+    "npm:pi-web-access",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:@juicesharp/rpiv-todo"
+  ],
+  "enabledModels": [
+    "openai-codex/gpt-6-astra",
+    "openai-codex/gpt-6-luna",
+    "openai-codex/gpt-6-sol"
+  ]
+}

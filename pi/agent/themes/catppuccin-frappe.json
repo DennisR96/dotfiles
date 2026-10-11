@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
+  "name": "catppuccin-frappe",
+  "appearance": "dark",
+  "vars": {
+    "rosewater": "#f2d5cf", "flamingo": "#eebebe", "pink": "#f4b8e4", "mauve": "#ca9ee6", "red": "#e78284", "maroon": "#ea999c", "peach": "#ef9f76", "yellow": "#e5c890", "green": "#a6d189", "teal": "#81c8be", "sky": "#99d1db", "sapphire": "#85c1dc", "blue": "#8caaee", "lavender": "#babbf1",
+    "text": "#c6d0f5", "subtext1": "#b5bfe2", "subtext0": "#a5adce", "overlay2": "#949cbb", "overlay1": "#838ba7", "overlay0": "#737994", "surface2": "#626880", "surface1": "#51576d", "surface0": "#414559", "base": "#303446", "mantle": "#292c3c", "crust": "#232634"
+  },
+  "colors": {
+    "accent": "mauve", "border": "surface2", "borderAccent": "lavender", "borderMuted": "surface1", "success": "green", "error": "red", "warning": "peach", "muted": "subtext0", "dim": "overlay0", "text": "text", "thinkingText": "subtext1", "selectedBg": "surface1", "scrollbarTrack": "mantle", "scrollbarThumb": "overlay0", "searchMatchBg": "surface2", "searchMatchText": "text",
+    "userMessageBg": "surface0", "userMessageText": "text", "customMessageBg": "#3b354f", "customMessageText": "subtext1", "customMessageLabel": "mauve", "toolPendingBg": "mantle", "toolSuccessBg": "#30433a", "toolErrorBg": "#48333d", "toolTitle": "text", "toolOutput": "subtext1",
+    "mdHeading": "lavender", "mdLink": "blue", "mdLinkUrl": "sapphire", "mdCode": "green", "mdCodeBlock": "text", "mdCodeBlockBorder": "surface2", "mdQuote": "subtext1", "mdQuoteBorder": "teal", "mdHr": "overlay0", "mdListBullet": "mauve",
+    "toolDiffAdded": "green", "toolDiffRemoved": "red", "toolDiffContext": "subtext0", "syntaxComment": "overlay1", "syntaxKeyword": "mauve", "syntaxFunction": "blue", "syntaxVariable": "text", "syntaxString": "green", "syntaxNumber": "peach", "syntaxType": "yellow", "syntaxOperator": "sky", "syntaxPunctuation": "overlay2",
+    "thinkingOff": "surface2", "thinkingMinimal": "overlay0", "thinkingLow": "blue", "thinkingMedium": "sapphire", "thinkingHigh": "mauve", "thinkingXhigh": "pink", "thinkingMax": "red", "bashMode": "green"
+  },
+  "export": { "pageBg": "base", "cardBg": "mantle", "infoBg": "surface0" }
+}
