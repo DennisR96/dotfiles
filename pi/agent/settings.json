@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "1.1.0",
+  "lastChangelogVersion": "1.2.0",
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-6-luna",
   "defaultTools": [
@@ -12,7 +12,8 @@
   "packages": [
     "npm:pi-web-access",
     "npm:@juicesharp/rpiv-ask-user-question",
-    "npm:@juicesharp/rpiv-todo"
+    "npm:@juicesharp/rpiv-todo",
+    "npm:@earendil-works/pi-voice"
   ],
   "enabledModels": [
     "openai-codex/gpt-6-astra",

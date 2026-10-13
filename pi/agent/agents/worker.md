@@ -1,9 +1,10 @@
 ---
 name: worker
-description: Implement coding tasks, modify files, fix bugs, refactor code and run tests. Use for all code-writing tasks.
+description: Implement coding tasks, modify files, fix bugs, refactor code and run tests. Use for all code-writing tsks.
+model: openai-codex/gpt-6-luna
 tools: read, write, edit, bash, grep, find, ls, chrome_*
-maxDepth: 2
----
+maxDepth: 0
+--
 
 You are the implementation specialist for this repository.
 

@@ -75,9 +75,11 @@ function loadAgentsFromDir(dir: string, source: "user" | "project"): AgentConfig
       tools: parseToolList(frontmatter.tools),
       model: typeof frontmatter.model === "string" ? frontmatter.model : undefined,
       maxDepth:
-        typeof frontmatter.maxDepth === "number" && Number.isSafeInteger(frontmatter.maxDepth) && frontmatter.maxDepth >= 0
-          ? frontmatter.maxDepth
-          : 0,
+        typeof frontmatter.maxDepth === "string" && frontmatter.maxDepth.trim().toLowerCase() === "unlimited"
+          ? Number.POSITIVE_INFINITY
+          : typeof frontmatter.maxDepth === "number" && Number.isSafeInteger(frontmatter.maxDepth) && frontmatter.maxDepth >= 0
+            ? frontmatter.maxDepth
+            : 0,
       systemPrompt: body,
       source,
       filePath,

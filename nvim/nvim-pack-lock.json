@@ -8,17 +8,37 @@
       "rev": "cbc7b02bb99fae35cb42f514762b89b5126651ef",
       "src": "https://github.com/hrsh7th/cmp-nvim-lsp"
     },
+    "codecompanion.nvim": {
+      "rev": "3dd1ef7fa8d6aeb27020023e40293bac588de714",
+      "src": "https://github.com/olimorris/codecompanion.nvim"
+    },
+    "codediff.nvim": {
+      "rev": "09d9ebef2cc5a5c04db7a349cd6c61bdf84ecc8e",
+      "src": "https://github.com/esmuellert/codediff.nvim"
+    },
     "conform.nvim": {
       "rev": "016802de402556da54c36bd7359b441266b01cdd",
       "src": "https://github.com/stevearc/conform.nvim"
+    },
+    "copilot-cmp": {
+      "rev": "15fc12af3d0109fa76b60b5cffa1373697e261d1",
+      "src": "https://github.com/zbirenbaum/copilot-cmp"
     },
     "copilot.lua": {
       "rev": "b4bf055bf394c2e17eed3bf65ccf427e60f7e64c",
       "src": "https://github.com/zbirenbaum/copilot.lua"
     },
+    "copilot.vim": {
+      "rev": "a12fd5672110c8aa7e3c8419e28c96943ca179be",
+      "src": "https://github.com/github/copilot.vim"
+    },
     "cutlass.nvim": {
       "rev": "d01b5c1943050fcda8edf5c89d4419c41a65890e",
       "src": "https://github.com/gbprod/cutlass.nvim"
+    },
+    "diffview.nvim": {
+      "rev": "4516612fe98ff56ae0415a259ff6361a89419b0a",
+      "src": "https://github.com/sindrets/diffview.nvim"
     },
     "mason-lspconfig.nvim": {
       "rev": "e17625cdc8c2650787467398e02c5d63a2cde966",
@@ -59,6 +79,10 @@
     "telescope.nvim": {
       "rev": "40aedd8a68c78a656a10a8d62d80c54af59420fb",
       "src": "https://github.com/nvim-telescope/telescope.nvim"
+    },
+    "which-key.nvim": {
+      "rev": "3aab2147e74890957785941f0c1ad87d0a44c15a",
+      "src": "https://github.com/folke/which-key.nvim"
     }
   }
 }

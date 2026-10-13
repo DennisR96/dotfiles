@@ -1,6 +1,7 @@
 ---
 name: scout
 description: Explore the codebase, locate relevant files, trace dependencies and explain existing behavior. Use when the location or implementation of functionality is unclear.
+model: openai-codex/gpt-6-luna
 tools: read, grep, find, ls, chrome_*
 maxDepth: 0
 ---

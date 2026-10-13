@@ -17,6 +17,8 @@ vim.keymap.set("n", "<leader>p", function()
 end, { desc = "Save and run Python file" })
 vim.keymap.set("n", "<leader>q", ":<C-u>q<CR>", { silent = true })
 vim.keymap.set("n", "<leader>w", ":<C-u>w<CR>", { silent = true })
+vim.keymap.set("n", "<leader>tn", "<Cmd>tabnew<CR>", { desc = "New tab" })
+vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "Go to definition" })
 vim.keymap.set("n", "-", "<CMD>Oil<CR>", { desc = "Open parent directory with Oil" })
 vim.keymap.set("x", "p", "P")
 

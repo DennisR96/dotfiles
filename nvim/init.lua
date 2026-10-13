@@ -8,6 +8,7 @@ end
 
 local config = vim.fn.stdpath("config")
 dofile(config .. "/options.lua")
+dofile(config .. "/misc.lua")
 dofile(config .. "/keymaps.lua")
 dofile(config .. "/plugins.lua")
 

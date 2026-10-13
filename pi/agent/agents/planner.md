@@ -1,6 +1,7 @@
 ---
 name: planner
 description: Design concise implementation plans for complex features, refactors and changes spanning multiple files. Use only when a plan materially reduces implementation risk.
+model: openai-codex/gpt-6-sol
 tools: read, grep, find, ls, chrome_*
 maxDepth: 0
 ---

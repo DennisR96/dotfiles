@@ -41,15 +41,19 @@ local max_width = 0
 for _, line in ipairs(content) do
 	max_width = math.max(max_width, vim.fn.strdisplaywidth(line))
 end
+local logo_display_width = 0
+for _, line in ipairs(logo) do
+	logo_display_width = math.max(logo_display_width, vim.fn.strdisplaywidth(line))
+end
+local logo_pad = math.max(0, math.floor((width - logo_display_width) / 2))
 local lines = {}
 for index, line in ipairs(content) do
-	local line_width = vim.fn.strdisplaywidth(line)
 	local pad
 	if index >= 2 and index <= #logo + 1 then
-		-- Center each logo row against the actual editor width, independently
-		-- of the dashboard menu/footer width.
-		pad = math.max(0, math.floor((width - line_width) / 2))
+		-- Center the whole logo, not each row: Pi keeps every row left-aligned.
+		pad = logo_pad
 	else
+		local line_width = vim.fn.strdisplaywidth(line)
 		pad = math.max(0, math.floor((width - max_width) / 2) + math.floor((max_width - line_width) / 2))
 	end
 	lines[#lines + 1] = string.rep(" ", pad) .. line
@@ -70,13 +74,80 @@ vim.bo[buf].filetype = "raek-start"
 
 local ns = vim.api.nvim_create_namespace("raek_start_screen")
 local palette = { "#FF6B90", "#EF45B5", "#C246CB", "#875BE4", "#4299FF" }
+local rgb_palette = {}
 for i, color in ipairs(palette) do
-	vim.api.nvim_set_hl(0, "RaekLogo" .. i, { fg = color })
+	rgb_palette[i] = {
+		tonumber(color:sub(2, 3), 16),
+		tonumber(color:sub(4, 5), 16),
+		tonumber(color:sub(6, 7), 16),
+	}
 end
-for i = 1, #logo do
-	local color = math.min(#palette, math.floor((i - 1) / (#logo - 1) * (#palette - 1)) + 1)
-	vim.api.nvim_buf_add_highlight(buf, ns, "RaekLogo" .. color, top + i, 0, -1)
+
+local function gradient_color(position, phase)
+	local scaled = position * (#rgb_palette - 1)
+	local index = math.min(math.floor(scaled) + 1, #rgb_palette - 1)
+	local fraction = scaled - (index - 1)
+	local wave = (1 + math.cos(2 * math.pi * (position * 1.25 - phase))) / 2
+	local glow = 0.24 * wave * wave * wave
+	local channels = {}
+	for channel = 1, 3 do
+		local start, finish = rgb_palette[index][channel], rgb_palette[index + 1][channel]
+		local base = math.floor(start + (finish - start) * fraction + 0.5)
+		channels[channel] = math.floor(base + (255 - base) * glow + 0.5)
+	end
+	return string.format("#%02X%02X%02X", channels[1], channels[2], channels[3])
 end
+
+local logo_ns = vim.api.nvim_create_namespace("raek_start_screen_logo")
+local logo_width = 0
+for _, line in ipairs(logo) do
+	logo_width = math.max(logo_width, vim.fn.strchars(line))
+end
+local logo_columns = {}
+for row, line in ipairs(logo) do
+	-- Extmark columns are byte offsets into the *centered* buffer line.
+	local byte_col = #(lines[top + row + 1]:match("^ *") or "") - #(line:match("^ *") or "")
+	for char_index = 0, vim.fn.strchars(line) - 1 do
+		local char = vim.fn.strcharpart(line, char_index, 1)
+		local byte_end = byte_col + #char
+		if char ~= " " then
+			local group = "RaekLogoAnim" .. char_index
+			logo_columns[char_index] = true
+			vim.api.nvim_buf_set_extmark(buf, logo_ns, top + row, byte_col, {
+				end_col = byte_end,
+				hl_group = group,
+			})
+		end
+		byte_col = byte_end
+	end
+end
+
+local started_at = vim.uv.hrtime()
+local animation = vim.uv.new_timer()
+local function render_logo()
+	if not vim.api.nvim_buf_is_valid(buf) then
+		animation:stop()
+		animation:close()
+		return
+	end
+	local phase = ((vim.uv.hrtime() - started_at) / 1e6 / 4500) % 1
+	for char_index in pairs(logo_columns) do
+		local position = logo_width > 1 and char_index / (logo_width - 1) or 0
+		vim.api.nvim_set_hl(0, "RaekLogoAnim" .. char_index, { fg = gradient_color(position, phase) })
+	end
+end
+render_logo()
+animation:start(33, 33, vim.schedule_wrap(render_logo))
+vim.api.nvim_create_autocmd("BufWipeout", {
+	buffer = buf,
+	once = true,
+	callback = function()
+		if not animation:is_closing() then
+			animation:stop()
+			animation:close()
+		end
+	end,
+})
 vim.api.nvim_buf_add_highlight(buf, ns, "Title", top + #logo + 2, 0, -1)
 for _, row in ipairs(menu_rows) do
 	vim.api.nvim_buf_add_highlight(buf, ns, "Comment", top + row, 0, -1)

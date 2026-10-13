@@ -21,10 +21,43 @@ const MAX_CONCURRENCY = 4;
 const COLLAPSED_ITEM_COUNT = 10;
 const PER_TASK_OUTPUT_CAP = 50 * 1024;
 const SUBAGENT_DEPTH_ENV = "PI_SUBAGENT_DEPTH";
+const SUBAGENT_MAX_DEPTH_ENV = "PI_SUBAGENT_MAX_DEPTH";
+const SPAWN_CONFIRMATION_INTERVAL = 8;
+
+let spawnedAgentCount = 0;
+let spawnConfirmationDeclined = false;
+let spawnConfirmationQueue: Promise<void> = Promise.resolve();
 
 function getSubagentDepth(): number {
   const parsed = Number.parseInt(process.env[SUBAGENT_DEPTH_ENV] ?? "0", 10);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function getCallerMaxDepth(): number {
+  const raw = process.env[SUBAGENT_MAX_DEPTH_ENV];
+  if (raw === "unlimited" || raw === "Infinity") return Number.POSITIVE_INFINITY;
+  const parsed = Number.parseInt(raw ?? "", 10);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : Number.POSITIVE_INFINITY;
+}
+
+async function acquireSpawnPermit(confirm: (() => Promise<boolean>) | undefined): Promise<boolean> {
+  let release!: () => void;
+  const previous = spawnConfirmationQueue;
+  spawnConfirmationQueue = new Promise<void>((resolve) => { release = resolve; });
+  await previous;
+  try {
+    if (spawnConfirmationDeclined) return false;
+    if (spawnedAgentCount > 0 && spawnedAgentCount % SPAWN_CONFIRMATION_INTERVAL === 0) {
+      if (!confirm || !(await confirm())) {
+        spawnConfirmationDeclined = true;
+        return false;
+      }
+    }
+    spawnedAgentCount++;
+    return true;
+  } finally {
+    release();
+  }
 }
 
 function formatTokens(count: number): string {
@@ -171,6 +204,28 @@ function getFinalOutput(messages: Message[]): string {
   return "";
 }
 
+function formatUsageByModel(results: SingleResult[]): string {
+  const totals = new Map<string, { agents: number; input: number; output: number }>();
+  for (const result of results) {
+    const model = result.model ?? "unknown";
+    const total = totals.get(model) ?? { agents: 0, input: 0, output: 0 };
+    total.agents++;
+    total.input += result.usage.input;
+    total.output += result.usage.output;
+    totals.set(model, total);
+  }
+  const rows = Array.from(totals, ([model, usage]) =>
+    `| \`${model}\` | ${usage.agents} | ${usage.input.toLocaleString("en-US")} | ${usage.output.toLocaleString("en-US")} |`,
+  );
+  return [
+    "## Delegation usage by model",
+    "",
+    "| Model | Agents | Input tokens | Output tokens |",
+    "| --- | ---: | ---: | ---: |",
+    ...rows,
+  ].join("\n");
+}
+
 function isFailedResult(result: SingleResult): boolean {
   return result.exitCode !== 0 || result.stopReason === "error" || result.stopReason === "aborted";
 }
@@ -260,6 +315,8 @@ interface DispatchDefaults {
   model?: string;
   models?: string;
   thinkingLevel?: ThinkingLevel;
+  selectModel?: (title: string, options: string[]) => Promise<string | undefined>;
+  confirmMoreAgents?: (title: string, message: string) => Promise<boolean>;
 }
 
 async function runSingleAgent(
@@ -290,7 +347,31 @@ async function runSingleAgent(
     };
   }
 
-  const args: string[] = ["--mode", "json", "-p", "--no-session"];
+  const isAgentCaller = process.env[SUBAGENT_MAX_DEPTH_ENV] !== undefined;
+  const confirmSpawn = isAgentCaller
+    ? () => dispatchDefaults.confirmMoreAgents?.(
+      "Continue spawning agents?",
+      `This organizer run has spawned ${spawnedAgentCount} agents. Continue to the next batch of up to ${SPAWN_CONFIRMATION_INTERVAL}?`,
+    ) ?? Promise.resolve(false)
+    : undefined;
+  if (isAgentCaller && !(await acquireSpawnPermit(confirmSpawn))) {
+    return {
+      agent: agentName,
+      agentSource: agent.source,
+      task,
+      exitCode: 1,
+      messages: [],
+      stderr: `Canceled: user approval is required after every ${SPAWN_CONFIRMATION_INTERVAL} agents.`,
+      usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, contextTokens: 0, turns: 0 },
+      model: agent.model ?? dispatchDefaults.model,
+      step,
+    };
+  }
+
+  const rpcMode = agent.maxDepth > 0;
+  const args: string[] = rpcMode
+    ? ["--mode", "rpc", "--no-session"]
+    : ["--mode", "json", "-p", "--no-session"];
   if (dispatchDefaults.models) args.push("--models", dispatchDefaults.models);
   const inheritsDispatchConfig = !agent.model;
   const model = agent.model ?? dispatchDefaults.model;
@@ -298,8 +379,8 @@ async function runSingleAgent(
   if (inheritsDispatchConfig && dispatchDefaults.thinkingLevel) {
     args.push("--thinking", dispatchDefaults.thinkingLevel);
   }
-  // maxDepth is the number of child generations this agent may create. The
-  // child process receives the incremented depth and checks its own agent limit.
+  // maxDepth controls whether this agent can spawn subagents and the depth limit
+  // enforced by its own subagent tool. The child receives its configured limit.
   const nestedDepth = getSubagentDepth() + 1;
   const configuredTools = agent.tools ? [...agent.tools] : undefined;
   if (agent.maxDepth > 0 && configuredTools && !configuredTools.includes("subagent")) {
@@ -339,7 +420,7 @@ async function runSingleAgent(
       args.push("--append-system-prompt", tmpPromptPath);
     }
 
-    args.push(`Task: ${task}`);
+    if (!rpcMode) args.push(`Task: ${task}`);
     let wasAborted = false;
     // Only the authorized parent Chrome extension can issue a live, per-spawn grant.
     // Never forward an inherited grant to another process.
@@ -360,10 +441,11 @@ async function runSingleAgent(
       const proc = spawn(invocation.command, invocation.args, {
         cwd: cwd ?? defaultCwd,
         shell: false,
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: [rpcMode ? "pipe" : "ignore", "pipe", "pipe"],
         env: {
           ...process.env,
           [SUBAGENT_DEPTH_ENV]: String(nestedDepth),
+          [SUBAGENT_MAX_DEPTH_ENV]: agent.maxDepth === Number.POSITIVE_INFINITY ? "unlimited" : String(agent.maxDepth),
           PI_CHROME_SUBAGENT_GRANT: chromeGrant?.grant ?? "",
         },
       });
@@ -376,6 +458,27 @@ async function runSingleAgent(
           event = JSON.parse(line);
         } catch {
           return;
+        }
+
+        if (event.type === "extension_ui_request" && rpcMode && (event.method === "select" || event.method === "confirm")) {
+          void (async () => {
+            try {
+              if (event.method === "select") {
+                const value = await dispatchDefaults.selectModel?.(event.title ?? "Choose subagent model", event.options ?? []);
+                proc.stdin?.write(`${JSON.stringify({ type: "extension_ui_response", id: event.id, ...(value === undefined ? { cancelled: true } : { value }) })}\n`);
+              } else {
+                const confirmed = await dispatchDefaults.confirmMoreAgents?.(event.title ?? "Confirm", event.message ?? "Continue?");
+                proc.stdin?.write(`${JSON.stringify({ type: "extension_ui_response", id: event.id, confirmed: confirmed === true })}\n`);
+              }
+            } catch {
+              proc.stdin?.write(`${JSON.stringify({ type: "extension_ui_response", id: event.id, cancelled: true })}\n`);
+            }
+          })();
+          return;
+        }
+
+        if (event.type === "agent_settled" && rpcMode) {
+          proc.stdin?.end();
         }
 
         if (event.type === "message_end" && event.message) {
@@ -412,6 +515,10 @@ async function runSingleAgent(
         buffer = lines.pop() || "";
         for (const line of lines) processLine(line);
       });
+
+      if (rpcMode) {
+        proc.stdin?.write(`${JSON.stringify({ type: "prompt", message: `Task: ${task}` })}\n`);
+      }
 
       proc.stderr.on("data", (data) => {
         currentResult.stderr += data.toString();
@@ -506,6 +613,8 @@ export default function(pi: ExtensionAPI) {
       const dispatchDefaults: DispatchDefaults = {
         model: ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : undefined,
         thinkingLevel: ctx.thinkingLevel,
+        selectModel: ctx.hasUI ? (title, options) => ctx.ui.select(title, options) : undefined,
+        confirmMoreAgents: ctx.hasUI ? (title, message) => ctx.ui.confirm(title, message) : undefined,
       };
       const discovery = discoverAgents(ctx.cwd, agentScope);
       const agents = discovery.agents;
@@ -539,12 +648,10 @@ export default function(pi: ExtensionAPI) {
         };
       }
 
-      const atDepthLimit = [...(params.chain ?? []).map((step) => step.agent), ...(params.tasks ?? []).map((task) => task.agent), ...(params.agent ? [params.agent] : [])]
-        .map((name) => agents.find((agent) => agent.name === name))
-        .find((agent) => agent && currentDepth > 0 && currentDepth >= agent.maxDepth);
-      if (atDepthLimit) {
+      const callerMaxDepth = getCallerMaxDepth();
+      if (process.env[SUBAGENT_MAX_DEPTH_ENV] !== undefined && currentDepth >= callerMaxDepth) {
         return {
-          content: [{ type: "text", text: `Agent "${atDepthLimit.name}" reached its maxDepth limit (${atDepthLimit.maxDepth}); no further subagents may be spawned.` }],
+          content: [{ type: "text", text: `This agent reached its maxDepth limit (${Number.isFinite(callerMaxDepth) ? callerMaxDepth : "unlimited"}); it cannot spawn more subagents.` }],
           details: makeDetails(hasChain ? "chain" : hasTasks ? "parallel" : "single")([]),
           isError: true,
         };
@@ -649,7 +756,7 @@ export default function(pi: ExtensionAPI) {
           if (isError) {
             const errorMsg = getResultOutput(result);
             return {
-              content: [{ type: "text", text: `Chain stopped at step ${i + 1} (${step.agent}): ${errorMsg}` }],
+              content: [{ type: "text", text: `Chain stopped at step ${i + 1} (${step.agent}): ${errorMsg}\n\n${formatUsageByModel(results)}` }],
               details: makeDetails("chain")(results),
               isError: true,
             };
@@ -657,7 +764,10 @@ export default function(pi: ExtensionAPI) {
           previousOutput = getFinalOutput(result.messages);
         }
         return {
-          content: [{ type: "text", text: getFinalOutput(results[results.length - 1].messages) || "(no output)" }],
+          content: [{
+            type: "text",
+            text: `${getFinalOutput(results[results.length - 1].messages) || "(no output)"}\n\n${formatUsageByModel(results)}`,
+          }],
           details: makeDetails("chain")(results),
         };
       }
@@ -739,7 +849,7 @@ export default function(pi: ExtensionAPI) {
           content: [
             {
               type: "text",
-              text: `Parallel: ${successCount}/${results.length} succeeded\n\n${summaries.join("\n\n---\n\n")}`,
+              text: `Parallel: ${successCount}/${results.length} succeeded\n\n${formatUsageByModel(results)}\n\n---\n\n${summaries.join("\n\n---\n\n")}`,
             },
           ],
           details: makeDetails("parallel")(results),
@@ -763,13 +873,16 @@ export default function(pi: ExtensionAPI) {
         if (isError) {
           const errorMsg = getResultOutput(result);
           return {
-            content: [{ type: "text", text: `Agent ${result.stopReason || "failed"}: ${errorMsg}` }],
+            content: [{ type: "text", text: `Agent ${result.stopReason || "failed"}: ${errorMsg}\n\n${formatUsageByModel([result])}` }],
             details: makeDetails("single")([result]),
             isError: true,
           };
         }
         return {
-          content: [{ type: "text", text: getFinalOutput(result.messages) || "(no output)" }],
+          content: [{
+            type: "text",
+            text: `${getFinalOutput(result.messages) || "(no output)"}\n\n${formatUsageByModel([result])}`,
+          }],
           details: makeDetails("single")([result]),
         };
       }
