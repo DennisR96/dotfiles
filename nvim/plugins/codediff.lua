@@ -1,5 +1,9 @@
 -- CodeDiff
-require("codediff").setup()
+require("codediff").setup({
+	diff = {
+		layout = "inline",
+	},
+})
 
 -- Diff navigation.
 vim.keymap.set("n", "<leader>dp", "[c", { desc = "Previous diff change" })

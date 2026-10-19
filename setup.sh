@@ -75,6 +75,11 @@ link_file() {
 
   mkdir -p "$(dirname "$target")"
 
+  if [[ -e "$source" && -e "$target" && "$source" -ef "$target" ]]; then
+    echo "Already linked $target -> $source"
+    return
+  fi
+
   if [[ -L "$target" ]]; then
     rm "$target"
   elif [[ -e "$target" ]]; then

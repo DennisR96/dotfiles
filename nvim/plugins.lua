@@ -5,6 +5,8 @@ vim.pack.add({
 	"https://github.com/gbprod/cutlass.nvim",
 	"https://github.com/stevearc/conform.nvim",
 	"https://github.com/hrsh7th/nvim-cmp",
+	"https://github.com/mfussenegger/nvim-dap",
+	"https://github.com/Cliffback/netcoredbg-macOS-arm64.nvim",
 	"https://github.com/neovim/nvim-lspconfig",
 	"https://github.com/williamboman/mason.nvim",
 	"https://github.com/williamboman/mason-lspconfig.nvim",
@@ -27,6 +29,7 @@ dofile(config .. "/plugins/copilot.lua")
 dofile(config .. "/plugins/cutlass.lua")
 dofile(config .. "/plugins/conform.lua")
 dofile(config .. "/plugins/cmp.lua")
+dofile(config .. "/plugins/dap.lua")
 dofile(config .. "/plugins/lsp.lua")
 dofile(config .. "/plugins/oil.lua")
 dofile(config .. "/plugins/which-key.lua")
