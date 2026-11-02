@@ -1,7 +1,6 @@
 ---
 name: reviewer
 description: Review code changes for correctness, regressions, security problems, missing tests and maintainability. Use after meaningful implementation changes.
-model: openai-codex/gpt-6-sol
 tools: read, grep, find, ls, chrome_*
 maxDepth: 0
 ---

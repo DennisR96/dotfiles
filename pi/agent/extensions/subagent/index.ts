@@ -294,6 +294,12 @@ async function writePromptToTempFile(agentName: string, prompt: string): Promise
 }
 
 function getPiInvocation(args: string[]): { command: string; args: string[] } {
+  // Electron hosts run with their app entry in argv[1] and an Electron binary
+  // in execPath. Reusing either would launch another app instead of Pi.
+  if (process.versions.electron) {
+    return { command: process.env.PI_SUBAGENT_CLI || "pi", args };
+  }
+
   const currentScript = process.argv[1];
   const isBunVirtualScript = currentScript?.startsWith("/$bunfs/root/");
   if (currentScript && !isBunVirtualScript && fs.existsSync(currentScript)) {
@@ -330,6 +336,7 @@ async function runSingleAgent(
   signal: AbortSignal | undefined,
   onUpdate: OnUpdateCallback | undefined,
   makeDetails: (results: SingleResult[]) => SubagentDetails,
+  registerCancel?: (cancel: () => void) => () => void,
 ): Promise<SingleResult> {
   const agent = agents.find((a) => a.name === agentName);
 
@@ -395,13 +402,17 @@ async function runSingleAgent(
     agent: agentName,
     agentSource: agent.source,
     task,
-    exitCode: 0,
+    exitCode: -1, // Streamed results are still running until the child closes.
     messages: [],
     stderr: "",
     usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, contextTokens: 0, turns: 0 },
     model,
     step,
   };
+
+  const cancelController = new AbortController();
+  const unsubscribeCancel = registerCancel?.(() => cancelController.abort());
+  signal = signal ? AbortSignal.any([signal, cancelController.signal]) : cancelController.signal;
 
   const emitUpdate = () => {
     if (onUpdate) {
@@ -524,34 +535,40 @@ async function runSingleAgent(
         currentResult.stderr += data.toString();
       });
 
+      const killProc = () => {
+        wasAborted = true;
+        proc.kill("SIGTERM");
+        setTimeout(() => {
+          if (proc.exitCode === null && proc.signalCode === null) proc.kill("SIGKILL");
+        }, 5000).unref();
+      };
       proc.on("close", (code) => {
+        signal?.removeEventListener("abort", killProc);
         chromeGrant?.release();
         if (buffer.trim()) processLine(buffer);
         resolve(code ?? 0);
       });
 
-      proc.on("error", () => {
+      proc.on("error", (error) => {
+        signal?.removeEventListener("abort", killProc);
+        currentResult.stderr += `Failed to start Pi subagent: ${error.message}\n`;
         chromeGrant?.release();
         resolve(1);
       });
 
-      if (signal) {
-        const killProc = () => {
-          wasAborted = true;
-          proc.kill("SIGTERM");
-          setTimeout(() => {
-            if (!proc.killed) proc.kill("SIGKILL");
-          }, 5000);
-        };
-        if (signal.aborted) killProc();
-        else signal.addEventListener("abort", killProc, { once: true });
-      }
+      if (signal?.aborted) killProc();
+      else signal?.addEventListener("abort", killProc, { once: true });
     });
 
     currentResult.exitCode = exitCode;
-    if (wasAborted) throw new Error("Subagent was aborted");
+    if (wasAborted) {
+      currentResult.exitCode = 1;
+      currentResult.stopReason = "aborted";
+      currentResult.errorMessage = "Subagent canceled.";
+    }
     return currentResult;
   } finally {
+    unsubscribeCancel?.();
     if (tmpPromptPath)
       try {
         fs.unlinkSync(tmpPromptPath);
@@ -634,6 +651,11 @@ export default function(pi: ExtensionAPI) {
             projectAgentsDir: discovery.projectAgentsDir,
             results,
           });
+      const cancelFor = (index: number) => (cancel: () => void) =>
+        pi.events.on("raek:cancel-subagent", (data) => {
+          const request = data as { toolCallId?: string; index?: number };
+          if (request.toolCallId === _toolCallId && request.index === index) cancel();
+        });
 
       if (modeCount !== 1) {
         const available = agents.map((a) => `${a.name} (${a.source})`).join(", ") || "none";
@@ -749,6 +771,7 @@ export default function(pi: ExtensionAPI) {
             signal,
             chainUpdate,
             makeDetails("chain"),
+            cancelFor(i),
           );
           results.push(result);
 
@@ -813,29 +836,65 @@ export default function(pi: ExtensionAPI) {
           }
         };
 
-        const results = await mapWithConcurrencyLimit(params.tasks, MAX_CONCURRENCY, async (t, index) => {
-          const result = await runSingleAgent(
-            ctx.cwd,
-            dispatchDefaults,
-            agents,
-            t.agent,
-            t.task,
-            t.cwd,
-            undefined,
-            signal,
-            // Per-task update callback
-            (partial) => {
-              if (partial.details?.results[0]) {
-                allResults[index] = partial.details.results[0];
-                emitParallelUpdate();
-              }
-            },
-            makeDetails("parallel"),
-          );
-          allResults[index] = result;
-          emitParallelUpdate();
-          return result;
-        });
+        // Listen before starting the concurrency queue, so queued agents can
+        // be canceled without launching their child process later.
+        const controllers = params.tasks.map(() => new AbortController());
+        const unsubscribe = controllers.map((controller, index) =>
+          cancelFor(index)(() => {
+            controller.abort();
+            if (allResults[index].exitCode === -1) {
+              allResults[index] = {
+                ...allResults[index],
+                exitCode: 1,
+                stopReason: "aborted",
+                errorMessage: "Subagent canceled.",
+              };
+              emitParallelUpdate();
+            }
+          }),
+        );
+        let results: SingleResult[];
+        try {
+          results = await mapWithConcurrencyLimit(params.tasks, MAX_CONCURRENCY, async (t, index) => {
+            if (controllers[index].signal.aborted) {
+              const canceled: SingleResult = {
+                ...allResults[index],
+                exitCode: 1,
+                stopReason: "aborted",
+                errorMessage: "Subagent canceled.",
+              };
+              allResults[index] = canceled;
+              emitParallelUpdate();
+              return canceled;
+            }
+            const childSignal = signal
+              ? AbortSignal.any([signal, controllers[index].signal])
+              : controllers[index].signal;
+            const result = await runSingleAgent(
+              ctx.cwd,
+              dispatchDefaults,
+              agents,
+              t.agent,
+              t.task,
+              t.cwd,
+              undefined,
+              childSignal,
+              // Per-task update callback
+              (partial) => {
+                if (partial.details?.results[0]) {
+                  allResults[index] = partial.details.results[0];
+                  emitParallelUpdate();
+                }
+              },
+              makeDetails("parallel"),
+            );
+            allResults[index] = result;
+            emitParallelUpdate();
+            return result;
+          });
+        } finally {
+          for (const off of unsubscribe) off();
+        }
 
         const successCount = results.filter((r) => !isFailedResult(r)).length;
         const summaries = results.map((r) => {
@@ -868,6 +927,7 @@ export default function(pi: ExtensionAPI) {
           signal,
           onUpdate,
           makeDetails("single"),
+          cancelFor(0),
         );
         const isError = isFailedResult(result);
         if (isError) {

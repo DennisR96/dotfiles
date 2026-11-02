@@ -1,7 +1,6 @@
 ---
 name: organizer
 description: Break requests and project work into tasks and coordinate subagents, each of which may use its configured model.
-model: openai-codex/gpt-6-sol
 tools: read, grep, find, ls
 maxDepth: unlimited
 ---

@@ -4,7 +4,7 @@ description: Implement coding tasks, modify files, fix bugs, refactor code and r
 model: openai-codex/gpt-6-luna
 tools: read, write, edit, bash, grep, find, ls, chrome_*
 maxDepth: 0
---
+---
 
 You are the implementation specialist for this repository.
 

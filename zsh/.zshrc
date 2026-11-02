@@ -75,3 +75,10 @@ export PATH="$PATH:/Users/dennisrak/.cache/lm-studio/bin"
 
 # Pi
 export PATH="/opt/homebrew/Cellar/node/26.0.0/bin:$PATH"
+
+# bun completions
+[ -s "/Users/dennisrak/.bun/_bun" ] && source "/Users/dennisrak/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
